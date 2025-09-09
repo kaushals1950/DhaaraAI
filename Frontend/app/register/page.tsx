@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Scale, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
+import api from "@/lib/api"
+import { useRouter } from "next/navigation"
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -19,18 +19,40 @@ export default function RegisterPage() {
     lastName: "",
     email: "",
     password: "",
-    userType: "",
+    role: "",
     agreeToTerms: false,
   })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // TODO: Implement registration logic
-    console.log("Registration attempt:", formData)
-  }
+  const router = useRouter()
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    try {
+      const payload = {
+        username: `${formData.firstName} ${formData.lastName}`.trim(),
+        email: formData.email,
+        password: formData.password,
+        role: formData.role || "CLIENT",
+      }
+
+      const res = await api.post("/auth/register", payload)
+
+      alert("✅ Registration successful!")
+      router.push("/login")
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Registration failed. Please try again.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -47,7 +69,9 @@ export default function RegisterPage() {
         <Card className="border-border">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Create Account</CardTitle>
-            <CardDescription>Join thousands of users finding legal solutions with AI</CardDescription>
+            <CardDescription>
+              Join thousands of users finding legal solutions with AI
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -87,14 +111,14 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="userType">I am a</Label>
-                <Select onValueChange={(value) => handleInputChange("userType", value)}>
+                <Label htmlFor="role">I am a</Label>
+                <Select onValueChange={(value) => handleInputChange("role", value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select user type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="client">Client seeking legal help</SelectItem>
-                    <SelectItem value="lawyer">Lawyer offering services</SelectItem>
+                    <SelectItem value="CLIENT">Client seeking legal help</SelectItem>
+                    <SelectItem value="LAWYER">Lawyer offering services</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -126,6 +150,8 @@ export default function RegisterPage() {
                 </div>
               </div>
 
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="terms"
@@ -144,8 +170,8 @@ export default function RegisterPage() {
                 </Label>
               </div>
 
-              <Button type="submit" className="w-full" disabled={!formData.agreeToTerms}>
-                Create Account
+              <Button type="submit" className="w-full" disabled={!formData.agreeToTerms || loading}>
+                {loading ? "Creating Account..." : "Create Account"}
               </Button>
             </form>
 

@@ -1,7 +1,7 @@
 "use client"
 
+import api from "@/lib/api"
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,16 +9,35 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Scale, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const router = useRouter()
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Implement authentication logic
-    console.log("Login attempt:", { email, password })
+    setLoading(true)
+    setError(null)
+
+    try {
+      const res = await api.post("/auth/login", { email, password })
+
+      // Save token in localStorage
+      localStorage.setItem("token", res.data.accessToken)
+
+      // Redirect user (example: dashboard)
+      router.push("/dashboard")
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Login failed. Please try again.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -35,7 +54,9 @@ export default function LoginPage() {
         <Card className="border-border">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Welcome Back</CardTitle>
-            <CardDescription>Sign in to access your legal services dashboard</CardDescription>
+            <CardDescription>
+              Sign in to access your legal services dashboard
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -78,14 +99,19 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+
               <div className="flex items-center justify-between">
-                <Link href="/forgot-password" className="text-sm text-secondary hover:underline">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-secondary hover:underline"
+                >
                   Forgot password?
                 </Link>
               </div>
 
-              <Button type="submit" className="w-full">
-                Sign In
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
 
